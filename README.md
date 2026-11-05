@@ -1,20 +1,5 @@
 # AIO-Switch-Updater
-![hbappstore](https://img.shields.io/endpoint?url=https%3A%2F%2Frunkit.io%2Fhomlet%2Fhbappstore-shieldsio%2Fbranches%2Fmaster%3Furl%3Dhttps%3A%2F%2Fswitchbru.com%2Fappstore%2Frepo.json%26name%3Daio-switch-updater)
-![releases](https://img.shields.io/github/downloads/HamletDuFromage/AIO-switch-updater/total)
-[![Build AIO-switch-updater](https://github.com/HamletDuFromage/aio-switch-updater/actions/workflows/main.yml/badge.svg)](https://github.com/HamletDuFromage/aio-switch-updater/actions/workflows/main.yml)
-![tag](https://img.shields.io/github/v/release/HamletDuFromage/AIO-switch-updater)
-![GitHub](https://img.shields.io/github/license/HamletDuFromage/aio-switch-updater)
 
-<a href="https://liberapay.com/HamletDuFromage/donate"><img alt="Donate using Liberapay" src="https://liberapay.com/assets/widgets/donate.svg"></a>
-[![btc](https://img.shields.io/badge/BTC-1CoFc1bY5AHLP6Noe1zmqnJnp7ZWBxyo79-yellow?logo=bitcoin)](https://github.com/HamletDuFromage/aio-switch-updater#like-the-app)
-[![eth](https://img.shields.io/badge/ETH-0xf68f568e21a15934e0e9a6949288c3ca009140ba-purple?logo=ethereum)](https://github.com/HamletDuFromage/aio-switch-updater#like-the-app)
-[![xmr](https://img.shields.io/badge/XMR-88wjCuhHX3oNhVpEdYeUx3LvrkdTvcTHx7v7L5fQpjCg7QiAReJUVR4LPase5Byj2UhdVdLtvysJaXTFKq2EnuvuLjvQMGL-orange?logo=monero)](https://github.com/HamletDuFromage/aio-switch-updater#like-the-app)
-
-<!-- ([![ko-fi](https://img.shields.io/badge/ko--fi-buy%20me%20a%20coffee-ff69b4)](https://ko-fi.com/hamletdufromage)) -->
-
-<p align="center">
-<img src = "https://user-images.githubusercontent.com/61667930/93691188-7833f000-fad1-11ea-866d-42e19be54425.jpg"\><br>
-</p>
 
 A Nintendo Switch homebrew app to download and update CFWs, FWs and cheat codes. Supports Atmosphère, ReiNX and SXOS.
 
@@ -124,24 +109,6 @@ $ make
 
 PRs and suggestions are encouraged! If you wish to help with the localization of the app, you can translate the files in `resources/i18n/`. To easily find the non-translated strings and translate them, you may use `localizer.py` (e.g. `python localizer.py -r resources//i18n//en-US//menus.json -w resources//i18n//fr//menus.json`).
 
-## Disclaimer
-I do not own, host nor distribute any of the files that can be downloaded with this homebrew tool. At the owner's request, I will immediately remove the ability to download any problematic file.
 
-## Special thanks
-- [natinusala](https://github.com/natinusala) for the Borealis library.
-- [tiansongyu](https://github.com/tiansongyu) for bringing support for multi-language and for his Chinese translation.
-- [yyoossk](https://github.com/yyoossk) for the Japanese locale.
-- [sergiou87](https://github.com/sergiou87) for the Spanish locale.
-- [pedruhb](https://github.com/pedruhb) for the Brazilian locale.
-- [AD2076](https://github.com/AD2076) for the Italian locale.
-- [qazrfv1234](https://github.com/qazrfv1234) for the Traditional Chinese locale.
-- [Nota Inutilis](https://github.com/NotaInutilis/) for the French locale.
-- [Team Neptune](https://github.com/Team-Neptune) whose rcm code I used.
-- [fennectech](https://github.com/fennectech) for helping test the app and providing suggestions.
-- Iliak for [Cheat Slips](https://www.cheatslips.com/).
 
-### Like the app?
-- Liberapay : <a href="https://liberapay.com/HamletDuFromage/donate"><img alt="Donate using Liberapay" src="https://liberapay.com/assets/widgets/donate.svg"></a>
-- BTC: 1CoFc1bY5AHLP6Noe1zmqnJnp7ZWBxyo79
-- ETH: 0xf68f568e21a15934e0e9a6949288c3ca009140ba
-- Monero (XMR): 88wjCuhHX3oNhVpEdYeUx3LvrkdTvcTHx7v7L5fQpjCg7QiAReJUVR4LPase5Byj2UhdVdLtvysJaXTFKq2EnuvuLjvQMGL
+
