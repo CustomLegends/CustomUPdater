@@ -36,6 +36,7 @@ namespace util {
     void showDialogBoxInfo(const std::string& text);
     int showDialogBoxBlocking(const std::string& text, const std::string& opt);
     int showDialogBoxBlocking(const std::string& text, const std::string& opt1, const std::string& opt2);
+    int showDialogBoxBlocking(const std::string& text, const std::string& opt1, const std::string& opt2, const std::string& opt3);
     std::string getLatestTag(const std::string& url);
     std::string downloadFileToString(const std::string& url);
     std::string getCheatsVersion();

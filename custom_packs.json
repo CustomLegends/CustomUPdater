@@ -1,9 +1,4 @@
 {
-    "ams": {
-        "OQB HATS Pack": "https://github.com/ohquebacan/OQB-HATS-PACK/releases/latest/download/hats-pack.zip"
-    },
-    "misc": {
-        "Ticobro": "https://github.com/StonedModder/Ticobro/releases/latest/download/Ticbro.nro",
-        "Tico": "https://github.com/ticohq/tico/releases/latest/download/tico-0-7-1.zip"
-    }
+    "ams": {},
+    "misc": {}
 }

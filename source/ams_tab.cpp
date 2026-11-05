@@ -1,5 +1,7 @@
 #include "ams_tab.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <iostream>
 #include <string>
@@ -33,18 +35,21 @@ bool AmsTab::CreateDownloadItems(const nlohmann::ordered_json& cfw_links, bool h
         std::string hekate_url = hekate_link[0].second;
         std::string text_hekate = "menus/common/download"_i18n + hekate_link[0].first;
 
+        // The tab's `type` changes while the lists are built (custom tab: full pack
+        // first, then misc), so remember it per item instead of reading it later.
+        const contentType itemType = this->type;
         for (const auto& link : links) {
             bool pack = link.first.contains("[PACK]");
             std::string url = link.second;
             std::string text("menus/common/download"_i18n + link.first);
             listItem = new brls::ListItem(link.first);
             listItem->setHeight(LISTITEM_HEIGHT);
-            listItem->getClickEvent()->subscribe([this, text, text_hekate, url, hekate_url, hekate, pack, ams](brls::View* view) {
+            listItem->getClickEvent()->subscribe([this, text, text_hekate, url, hekate_url, hekate, pack, ams, itemType](brls::View* view) {
                 if (!erista && !std::filesystem::exists(MARIKO_PAYLOAD_PATH)) {
                     brls::Application::crash("menus/errors/mariko_payload_missing"_i18n);
                 }
                 else {
-                    CreateStagedFrames(text, url, erista, ams, hekate && !pack, text_hekate, hekate_url);
+                    CreateStagedFrames(text, url, erista, ams, hekate && !pack, text_hekate, hekate_url, itemType);
                 }
             });
             this->RegisterListItemAction(listItem);
@@ -55,16 +60,16 @@ bool AmsTab::CreateDownloadItems(const nlohmann::ordered_json& cfw_links, bool h
     return false;
 }
 
-void AmsTab::CreateStagedFrames(const std::string& text, const std::string& url, bool erista, bool ams, bool hekate, const std::string& text_hekate, const std::string& hekate_url)
+void AmsTab::CreateStagedFrames(const std::string& text, const std::string& url, bool erista, bool ams, bool hekate, const std::string& text_hekate, const std::string& hekate_url, contentType type)
 {
     brls::StagedAppletFrame* stagedFrame = new brls::StagedAppletFrame();
-    stagedFrame->setTitle(this->type == contentType::ams_cfw ? "menus/ams_update/getting_ams"_i18n : "menus/ams_update/custom_download"_i18n);
+    stagedFrame->setTitle(type == contentType::ams_cfw || type == contentType::full_pack ? "menus/ams_update/getting_ams"_i18n : "menus/ams_update/custom_download"_i18n);
     stagedFrame->addStage(
         new ConfirmPage(stagedFrame, text));
     stagedFrame->addStage(
-        new WorkerPage(stagedFrame, "menus/common/downloading"_i18n, [&, url]() { util::downloadArchive(url, this->type); }));
+        new WorkerPage(stagedFrame, "menus/common/downloading"_i18n, [url, type]() { util::downloadArchive(url, type); }));
     stagedFrame->addStage(
-        new WorkerPage(stagedFrame, "menus/common/extracting"_i18n, [&]() { util::extractArchive(this->type); }));
+        new WorkerPage(stagedFrame, "menus/common/extracting"_i18n, [type]() { util::extractArchive(type); }));
     if (hekate) {
         stagedFrame->addStage(
             new DialoguePage_ams(stagedFrame, text_hekate, erista));
@@ -210,10 +215,76 @@ void AmsTab_Regular::ShowCustomDeepseaBuilder(nlohmann::ordered_json& modules)
 
 AmsTab_Custom::AmsTab_Custom(const nlohmann::ordered_json& nxlinks, const bool erista) : AmsTab(nxlinks, erista)
 {
-    download::getRequest(CUSTOM_PACKS_URL, this->custom_packs);
+    // Link list comes from YOUR GitHub (CUSTOM_PACKS_URL), unless the SD card has
+    // /config/aio-switch-updater/links_url.txt with another URL on its first line.
+    std::string linksUrl = CUSTOM_PACKS_URL;
+    for (const auto& line : fs::readLineByLine(LINKS_URL_OVERRIDE)) {
+        std::string trimmed = line;
+        while (!trimmed.empty() && std::isspace(static_cast<unsigned char>(trimmed.back()))) trimmed.pop_back();
+        if (trimmed.rfind("http", 0) == 0) {
+            linksUrl = trimmed;
+            break;
+        }
+    }
+    download::getRequest(linksUrl, this->custom_packs);
     if (this->custom_packs.empty())
         this->custom_packs = fs::parseJsonFile(CUSTOM_PACKS_PATH);
+    if (!this->custom_packs.is_object())
+        this->custom_packs = nlohmann::ordered_json::object();
+    this->AddGithubReleases();
     this->CreateLists();
+}
+
+// Adds every .zip asset of your GitHub releases (name starts with RELEASE_NAME_FILTER)
+// to the "ams" (full pack) list. Newest release first, as returned by the GitHub API.
+void AmsTab_Custom::AddGithubReleases()
+{
+    nlohmann::ordered_json releases;
+    download::getRequest(RELEASES_API_URL, releases, {"accept: application/vnd.github.v3+json"});
+    if (!releases.is_array()) return;
+
+    const auto str = [](const nlohmann::ordered_json& j, const char* key) -> std::string {
+        auto it = j.find(key);
+        return (it != j.end() && it->is_string()) ? it->get<std::string>() : std::string();
+    };
+
+    nlohmann::ordered_json ams = nlohmann::ordered_json::object();
+    for (const auto& release : releases) {
+        if (!release.is_object()) continue;
+        auto draft = release.find("draft");
+        if (draft != release.end() && draft->is_boolean() && draft->get<bool>()) continue;
+
+        std::string name = str(release, "name");
+        if (name.empty()) name = str(release, "tag_name");
+        if (RELEASE_NAME_FILTER[0] != '\0' && name.rfind(RELEASE_NAME_FILTER, 0) != 0) continue;
+
+        auto assets = release.find("assets");
+        if (assets == release.end() || !assets->is_array()) continue;
+
+        std::vector<std::pair<std::string, std::string>> zips;  // asset name, url
+        for (const auto& asset : *assets) {
+            const std::string assetName = str(asset, "name");
+            const std::string url = str(asset, "browser_download_url");
+            if (url.empty() || assetName.size() < 5) continue;
+            std::string ext = assetName.substr(assetName.size() - 4);
+            std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return std::tolower(c); });
+            if (ext == ".zip") zips.emplace_back(assetName, url);
+        }
+        for (const auto& [assetName, url] : zips) {
+            // "[PACK]" = the zip already brings its own hekate, don't offer the stock one afterwards.
+            std::string label = zips.size() > 1 ? name + " - " + assetName : name;
+            ams[label + " [PACK]"] = url;
+        }
+    }
+
+    // GitHub releases first, then anything from custom_packs.json.
+    auto manual = this->custom_packs.find("ams");
+    if (manual != this->custom_packs.end() && manual->is_object()) {
+        for (const auto& item : manual->items()) {
+            if (!ams.contains(item.key())) ams[item.key()] = item.value();
+        }
+    }
+    this->custom_packs["ams"] = ams;
 }
 
 void AmsTab_Custom::CreateLists()
@@ -223,7 +294,7 @@ void AmsTab_Custom::CreateLists()
         fmt::format("menus/ams_update/custom_packs_label"_i18n, CUSTOM_PACKS_PATH),
         true));
 
-    this->type = contentType::ams_cfw;
+    this->type = contentType::full_pack;  // download -> verify -> optional SD wipe -> extract
     this->addView(new brls::Label(
         brls::LabelStyle::DESCRIPTION,
         "menus/ams_update/custom_packs_ams"_i18n,
@@ -242,7 +313,7 @@ void AmsTab_Custom::CreateLists()
 
 void AmsTab_Custom::AddLinkCreator()
 {
-    std::string category = this->type == contentType::ams_cfw ? "ams" : "misc";
+    std::string category = (this->type == contentType::ams_cfw || this->type == contentType::full_pack) ? "ams" : "misc";
     listItem = new brls::ListItem("menus/ams_update/add_custom_link"_i18n);
     listItem->setHeight(LISTITEM_HEIGHT);
     listItem->getClickEvent()->subscribe([this, category](brls::View* view) {
@@ -261,7 +332,7 @@ void AmsTab_Custom::AddLinkCreator()
 void AmsTab_Custom::RegisterListItemAction(brls::ListItem* listItem)
 {
     std::string label = listItem->getLabel();
-    std::string category = this->type == contentType::ams_cfw ? "ams" : "misc";
+    std::string category = (this->type == contentType::ams_cfw || this->type == contentType::full_pack) ? "ams" : "misc";
     listItem->registerAction("menus/ams_update/delete_custom_link"_i18n, brls::Key::X, [this, label, category] {
         auto& links = this->custom_packs.at(category);
         links.erase(label);

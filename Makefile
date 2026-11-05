@@ -20,10 +20,10 @@ SOURCES		:=	source source/forwarder
 RESOURCES	:=	resources
 DATA		:=	data
 INCLUDES	:=	include /lib/borealis/library/include/borealis/extern/nlohmann
-APP_TITLE	:=	All in One OQB Updater
-APP_AUTHOR	:=	OHQUEBACAN
+APP_TITLE	:=	CustomUpdater
+APP_AUTHOR	:=	Custom Legends
 APP_VERSION :=	1.9.2
-TARGET		:=	$(notdir $(CURDIR))
+TARGET		:=	OQB-updater
 
 ROMFS				:=	resources
 BOREALIS_PATH		:=	lib/borealis

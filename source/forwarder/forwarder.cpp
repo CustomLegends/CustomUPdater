@@ -539,7 +539,7 @@ namespace {
         nacp.data_loss_confirmation = 0x0;            // no usamos saves
         nacp.required_network_service_license_on_launch = 0x0;
 
-        const char error_code[] = "OQB";
+        const char error_code[] = "CLU";
         static_assert(sizeof(error_code) <= 9);
         nacp.application_error_code_category = 0;  // en realidad es char[8]
         std::memcpy(&nacp.application_error_code_category, error_code, sizeof(error_code) - 1);

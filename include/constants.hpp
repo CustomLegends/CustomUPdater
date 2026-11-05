@@ -15,9 +15,21 @@ constexpr const char MARIKO_PAYLOAD_PATH_TEMP[] = "/payload.bin.aio";
 
 constexpr const char CHANGELOG_URL[] = "https://github.com/HamletDuFromage/aio-switch-updater/releases";
 
-constexpr const char APP_URL[] = "https://github.com/ohquebacan/OQB-updater/releases/latest/download/OQB-updater.zip";
-constexpr const char APP_NRO_URL[] = "https://github.com/ohquebacan/OQB-updater/releases/latest/download/OQB-updater.nro";
-constexpr const char TAGS_INFO[] = "https://api.github.com/repos/ohquebacan/OQB-updater/releases/latest";
+// ===========================================================================
+//  >>> EDIT HERE (or run ./set_github.sh <user> <repo>) <<<
+//  <user>/<repo> = your GitHub account and the repo that holds
+//  this app's releases AND your custom_packs.json.
+// ===========================================================================
+constexpr const char APP_URL[] = "https://github.com/CustomLegends/Download-all/releases/download/app/OQB-updater.zip";
+constexpr const char APP_NRO_URL[] = "https://github.com/CustomLegends/Download-all/releases/download/app/OQB-updater.nro";
+// Version check disabled on purpose: this repo's "latest" release is a CFW pack, not the app.
+// The app itself is published as the pre-release tagged "app" (see the CI workflow).
+constexpr const char TAGS_INFO[] = "";
+
+// Every release of this repo whose NAME starts with RELEASE_NAME_FILTER is listed in the app
+// automatically (each .zip asset = one full pack). "" = list all releases.
+constexpr const char RELEASES_API_URL[] = "https://api.github.com/repos/CustomLegends/Download-all/releases?per_page=30";
+constexpr const char RELEASE_NAME_FILTER[] = "Switch";
 constexpr const char APP_FILENAME[] = "/config/aio-switch-updater/app.zip";
 
 constexpr const char NXLINKS_URL[] = "https://raw.githubusercontent.com/ohquebacan/OQB-HATS-PACK/main/nx-links.json";
@@ -45,7 +57,27 @@ constexpr const char DEEPSEA_BUILD_URL[] = "https://builder.teamneptune.net/buil
 constexpr const char DEEPSEA_PACKAGE_PATH[] = "/config/deepsea/customPackage.json";
 
 constexpr const char CUSTOM_PACKS_PATH[] = "/config/aio-switch-updater/custom_packs.json";
-constexpr const char CUSTOM_PACKS_URL[] = "https://raw.githubusercontent.com/ohquebacan/OQB-HATS-PACK/main/custom_packs.json";
+// Your own list of download links (see custom_packs.json in this repo).
+// Can also be changed WITHOUT recompiling: put the full URL on the first line of
+// /config/aio-switch-updater/links_url.txt on the SD card.
+constexpr const char CUSTOM_PACKS_URL[] = "https://raw.githubusercontent.com/CustomLegends/Download-all/main/custom_packs.json";
+constexpr const char LINKS_URL_OVERRIDE[] = "/config/aio-switch-updater/links_url.txt";
+
+// "Full pack" mode: download -> verify -> wipe SD -> extract.
+constexpr const char FULLPACK_FILENAME[] = "/config/aio-switch-updater/fullpack.zip";
+// Never deleted by the full wipe (on top of /config/aio-switch-updater, this
+// app's own .nro and whatever is listed in preserve.txt):
+//   /Nintendo   -> installed games/updates/DLC on SD + album
+//   /emuMMC     -> file/partition based emuNAND
+//   /backup     -> hekate NAND/BOOT0/BOOT1 backups
+//   /payload.bin-> Mariko boot payload (this app refuses to run without it)
+constexpr const char* WIPE_ALWAYS_KEEP[] = {
+    "/Nintendo",
+    "/emuMMC",
+    "/backup",
+    "/payload.bin",
+    "/config/aio-switch-updater",
+};
 
 constexpr const char CHEATS_URL_TITLES[] = "https://github.com/HamletDuFromage/switch-cheats-db/releases/latest/download/titles.zip";
 constexpr const char CHEATS_URL_CONTENTS[] = "https://github.com/HamletDuFromage/switch-cheats-db/releases/latest/download/contents.zip";
@@ -139,6 +171,7 @@ enum class contentType
     payloads,
     hekate_ipl,
     apps,
+    full_pack,
 };
 
 constexpr std::string_view contentTypeNames[9]{"custom", "cheats", "firmwares", "app", "bootloaders", "cfws", "payloads", "hekate_ipl", "apps"};

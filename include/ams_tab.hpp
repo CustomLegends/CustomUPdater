@@ -14,7 +14,7 @@ protected:
     nlohmann::ordered_json nxlinks;
     nlohmann::ordered_json hekate;
     contentType type;
-    void CreateStagedFrames(const std::string& text, const std::string& url, bool erista, bool ams = true, bool hekate = false, const std::string& text_hekate = "", const std::string& hekate_url = "");
+    void CreateStagedFrames(const std::string& text, const std::string& url, bool erista, bool ams = true, bool hekate = false, const std::string& text_hekate = "", const std::string& hekate_url = "", contentType type = contentType::ams_cfw);
     bool CreateDownloadItems(const nlohmann::ordered_json& cfw_links, bool hekate = true, bool ams = true);
     void CreateNotFoundLabel();
     virtual void RegisterListItemAction(brls::ListItem* listItem);
@@ -44,6 +44,7 @@ private:
     void CreateLists();
     void RegisterListItemAction(brls::ListItem* listItem) override;
     void AddLinkCreator();
+    void AddGithubReleases();
 
 public:
     AmsTab_Custom(const nlohmann::ordered_json& nxlinks, const bool erista = true);

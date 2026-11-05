@@ -209,4 +209,9 @@ namespace fs {
         return nsGetFreeSpaceSize(NcmStorageId_SdCard, &free);
     }
 
+    Result getTotalStorageSD(s64& total)
+    {
+        return nsGetTotalSpaceSize(NcmStorageId_SdCard, &total);
+    }
+
 }  // namespace fs

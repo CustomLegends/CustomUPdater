@@ -6,6 +6,8 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <set>
+#include <string>
 #include <thread>
 
 #include "current_cfw.hpp"
@@ -16,6 +18,8 @@
 #include "progress_event.hpp"
 #include "reboot_payload.h"
 #include "unistd.h"
+#include "verify.hpp"
+#include "wipe.hpp"
 
 namespace i18n = brls::i18n;
 using namespace i18n::literals;
@@ -66,6 +70,9 @@ namespace util {
                 break;
             case contentType::apps:
                 status_code = download::downloadFile(url, CUSTOM_FILENAME, OFF);
+                break;
+            case contentType::full_pack:
+                status_code = download::downloadFile(url, FULLPACK_FILENAME, OFF);
                 break;
             default:
                 break;
@@ -126,6 +133,34 @@ namespace util {
         return result;
     }
 
+    int showDialogBoxBlocking(const std::string& text, const std::string& opt1, const std::string& opt2, const std::string& opt3)
+    {
+        int result = -1;
+        brls::Dialog* dialog = new brls::Dialog(text);
+        brls::GenericEvent::Callback callback1 = [dialog, &result](brls::View* view) {
+            result = 0;
+            dialog->close();
+        };
+        brls::GenericEvent::Callback callback2 = [dialog, &result](brls::View* view) {
+            result = 1;
+            dialog->close();
+        };
+        brls::GenericEvent::Callback callback3 = [dialog, &result](brls::View* view) {
+            result = 2;
+            dialog->close();
+        };
+        dialog->addButton(opt1, callback1);
+        dialog->addButton(opt2, callback2);
+        dialog->addButton(opt3, callback3);
+        dialog->setCancelable(false);
+        dialog->open();
+        while (result == -1) {
+            std::this_thread::sleep_for(std::chrono::microseconds(10));
+        }
+        std::this_thread::sleep_for(std::chrono::microseconds(800000));
+        return result;
+    }
+
     void crashIfNotArchive(contentType type)
     {
         std::string filename;
@@ -151,6 +186,9 @@ namespace util {
             case contentType::apps:
                 filename = CUSTOM_FILENAME;
                 break;
+            case contentType::full_pack:
+                filename = FULLPACK_FILENAME;
+                break;
             default:
                 return;
         }
@@ -159,6 +197,84 @@ namespace util {
             ProgressEvent::instance().setStep(ProgressEvent::instance().getMax());
         }
     }
+
+    namespace {
+        void failStage(long code)
+        {
+            ProgressEvent::instance().setStatusCode(code);
+            ProgressEvent::instance().setStep(ProgressEvent::instance().getMax());
+        }
+
+        void cancelStage()
+        {
+            ProgressEvent::instance().setInterupt(true);
+            ProgressEvent::instance().setStep(ProgressEvent::instance().getMax());
+        }
+
+        // download (done by the previous stage) -> verify -> confirm -> wipe -> extract
+        void installFullPack()
+        {
+            if (ProgressEvent::instance().getStatusCode() > 399) return;  // download/zip check already failed
+
+            // 1) Verify the whole zip BEFORE touching anything on the SD card.
+            verify::ArchiveInfo info;
+            std::string error;
+            if (!verify::verifyArchive(FULLPACK_FILENAME, info, error)) {
+                brls::Logger::error("Full pack verification failed: {}", error);
+                if (ProgressEvent::instance().getInterupt()) {
+                    cancelStage();
+                }
+                else {
+                    failStage(406);  // "nothing was deleted" – see getErrorMessage
+                }
+                return;
+            }
+
+            s64 total = 0;
+            if (R_SUCCEEDED(fs::getTotalStorageSD(total)) && static_cast<double>(info.uncompressedSize) * 1.1 > static_cast<double>(total)) {
+                failStage(507);
+                return;
+            }
+
+            // 2) Ask. Cancel is the first (default-focused) button on purpose.
+            const std::string text = fmt::format(
+                "menus/full_pack/verified"_i18n,
+                info.files, static_cast<double>(info.uncompressedSize) / 1048576.0);
+            const int choice = showDialogBoxBlocking(text, "menus/full_pack/cancel"_i18n, "menus/full_pack/no_wipe"_i18n, "menus/full_pack/wipe"_i18n);
+            if (choice == 0 || ProgressEvent::instance().getInterupt()) {
+                cancelStage();
+                return;
+            }
+
+            // 3) Point of no return: from here on B must not abort half way.
+            ProgressEvent::instance().setInterupt(false);
+
+            if (choice == 2) {
+                std::set<std::string> keep;
+                for (const char* k : WIPE_ALWAYS_KEEP) keep.insert(k);
+                for (const auto& folder : AMS_CONTENTS_KEEP) keep.insert(std::string(AMS_CONTENTS) + folder);
+                keep.insert(getAppPath());
+                for (const auto& line : fs::readLineByLine(FILES_IGNORE)) {
+                    const std::string clean = wipe::cleanKeepEntry(line);
+                    if (!clean.empty()) keep.insert(clean);
+                }
+
+                ProgressEvent::instance().setStep(0);
+                const auto stats = wipe::wipeExcept(
+                    ROOT_PATH, keep,
+                    [](const std::string& dir) { return fs::removeDir(dir); },
+                    [](size_t done, size_t count) {
+                        ProgressEvent::instance().setTotalSteps(static_cast<int>(count) + 1);
+                        ProgressEvent::instance().setStep(static_cast<int>(done));
+                    });
+                brls::Logger::info("SD wipe: removed {}, kept {}, failed {}", stats.removed, stats.kept, stats.failed);
+            }
+
+            // 4) Extract (extract() sets its own progress and ends at step == max).
+            ProgressEvent::instance().setStep(0);
+            extract::extract(FULLPACK_FILENAME, ROOT_PATH, false);
+        }
+    }  // namespace
 
     void extractArchive(contentType type, const std::string& version)
     {
@@ -209,6 +325,10 @@ namespace util {
                 extract::extract(AMS_FILENAME, ROOT_PATH, preserveInis);
                 break;
             }
+            case contentType::full_pack: {
+                installFullPack();
+                break;
+            }
             case contentType::apps: {
                 // Hay zips de homebrew envueltos en una carpeta unica (SwitchU usa
                 // "sd_out/"). Sin quitarla, el override de atmosphere acaba en
@@ -220,7 +340,7 @@ namespace util {
             default:
                 break;
         }
-        if (type == contentType::ams_cfw || type == contentType::bootloaders || type == contentType::custom)
+        if (type == contentType::ams_cfw || type == contentType::bootloaders || type == contentType::custom || type == contentType::full_pack)
             fs::copyFiles(COPY_FILES_TXT);
     }
 
@@ -384,6 +504,12 @@ namespace util {
                 break;
             case 503:
                 res = fmt::format("{0:}: Service Temporarily Unavailable", status_code);
+                break;
+            case 406:
+                res = "menus/errors/full_pack_invalid_zip"_i18n;
+                break;
+            case 507:
+                res = "menus/errors/full_pack_too_big"_i18n;
                 break;
             default:
                 res = fmt::format("error: {0:}", status_code);

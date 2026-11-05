@@ -6,7 +6,7 @@
         "disclaimers": "◆ This app uses third-party tools and apps. All rights and credits belong to their respective developers.\n◆ Follow us on YouTube for more tutorials",
         "donate": "",
         "status_title": "Console status",
-        "status_version": "OQB-updater",
+        "status_version": "CustomUpdater",
         "status_version_new": "A new version is available. Press A to update.",
         "status_cfw": "Custom firmware",
         "status_firmware": "System firmware",
@@ -207,7 +207,7 @@
         "depends_on": "The following modules will also be installed:",
         "download_custom_deepsea": "Download this custom DeepSea package",
         "get_custom_deepsea": "Get custom DeepSea package",
-        "deepsea_label": "◆ OQB HATS PACK by Team BACÁN is a CFW pack that includes Atmosphère, hekate, and various homebrew apps.",
+        "deepsea_label": "◆ Custom Legends CFW pack is a complete CFW pack that includes Atmosphère, hekate, and various homebrew apps.",
         "download_deepsea_package": "Compile and download",
         "cant_fetch_deepsea": "Couldn't fetch packages. Open a Github issue if this persists.",
         "build_your_deepsea": "Build your own custom DeepSea package by selecting packages",
@@ -228,7 +228,9 @@
     "errors": {
         "insufficient_storage": "There isn't enough space available on your SD card to perform this operation.",
         "error_message": "{}\nPlease try again in a little while. If the problem persists, open an issue on GitHub.",
-        "mariko_payload_missing": "In order to update Atmosphère on patched Switches, your payload needs to be named \"payload.bin\" and should be at the root of your SD card."
+        "mariko_payload_missing": "In order to update Atmosphère on patched Switches, your payload needs to be named \"payload.bin\" and should be at the root of your SD card.",
+        "full_pack_invalid_zip": "406: the downloaded file is not a complete, valid ZIP.\nNOTHING was deleted from your SD card.",
+        "full_pack_too_big": "507: the pack is larger than the SD card.\nNOTHING was deleted from your SD card."
     },
     "worker": {
         "of": "of",
@@ -271,9 +273,9 @@
         "entry_again": "Download the app again ({})",
         "staged_title": "Update to {}",
         "staged_title_again": "Download {} again",
-        "confirm": "Download and install OQB-updater {}?",
-        "confirm_again": "Download and install OQB-updater {} again?",
-        "notice": "OQB-updater {} is running, and {} is available.\n\nUpdating replaces the app only. Nothing else on the SD card is touched.",
+        "confirm": "Download and install CustomUpdater {}?",
+        "confirm_again": "Download and install CustomUpdater {} again?",
+        "notice": "CustomUpdater {} is running, and {} is available.\n\nUpdating replaces the app only. Nothing else on the SD card is touched.",
         "notice_now": "Update now",
         "notice_later": "Later"
     },
@@ -322,5 +324,11 @@
         "the_joycons": "the Joy-Cons",
         "the_pro_controller": "the Pro Controller",
         "apply_failed": "Could not apply the colour. Make sure {} are connected and try again.\nError: {}"
+    },
+    "full_pack": {
+        "verified": "Pack verified OK: {} files, {:.1f} MB.\n\nWIPE = delete EVERYTHING on the SD card except /Nintendo, /emuMMC, /backup, /payload.bin, this app + its config and anything listed in preserve.txt, then install the pack.\n\nKeep the console charged/plugged in until it says done.",
+        "cancel": "Cancel",
+        "no_wipe": "Install without wiping",
+        "wipe": "Wipe SD & install"
     }
 }

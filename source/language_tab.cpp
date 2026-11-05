@@ -26,9 +26,8 @@ namespace {
 LanguageTab::LanguageTab() : brls::List()
 {
     std::vector<std::pair<std::string, std::string>> languages{
-        std::make_pair("American English ({})", "en-US"),
-        std::make_pair("Español ({})", "es"),
-        std::make_pair("Português ({})", "pt-BR")};
+        std::make_pair("English ({})", "en-US"),
+        std::make_pair("Deutsch ({})", "de")};
 
     brls::ListItem* listItem;
     listItem = new brls::ListItem(fmt::format("System Default ({})", i18n::getCurrentLocale()));
