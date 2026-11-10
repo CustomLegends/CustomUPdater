@@ -1,68 +1,87 @@
-name: Build OQB-updater
+name: Build CustomUpdater
 
-on: 
+on:
   push:
   workflow_dispatch:
 
+# Needed so the "Publish release" step may create/update the release with GITHUB_TOKEN.
+permissions:
+  contents: write
+
 jobs:
-  OQB-updater:
+  build:
     runs-on: ubuntu-latest
-    #container: hamletdufromage/devkita64_devkitarm
     container: devkitpro/devkita64
     steps:
     - uses: actions/checkout@v1
 
-    - name: update repo
+    - name: Get submodules (borealis, TegraExplorer)
       run: |
-        git config --global --add safe.directory /__w/OQB-updater/OQB-updater/lib/borealis
-        git config --global --add safe.directory /__w/OQB-updater/OQB-updater
-        git config --global --add safe.directory /__w/OQB-updater/OQB-updater/TegraExplorer
-        git submodule update --init --recursive
+        # 1) The checkout lives in /__w/<repo>/<repo> and is owned by another user than the
+        #    container user -> git refuses it ("dubious ownership"). Trust every directory
+        #    (works for any repo name, no hard-coded paths).
+        git config --global --add safe.directory '*'
+
+        # 2) Normal case: the repo knows its submodules (e.g. a GitHub fork).
+        git submodule sync --recursive || true
+        git submodule update --init --recursive || true
+
+        # 3) Fallback: files were uploaded without submodule entries -> the folders are
+        #    empty. Clone them straight from GitHub (public repos, no token needed),
+        #    pinned to the versions this app was written against.
+        fetch() {
+          dir="$1"; url="$2"; sha="$3"
+          if [ -z "$(ls -A "$dir" 2>/dev/null)" ]; then
+            echo "::notice::$dir is empty -> cloning $url"
+            rm -rf "$dir"
+            git clone --recursive "$url" "$dir"
+            git -C "$dir" checkout "$sha"
+            git -C "$dir" submodule update --init --recursive
+          fi
+        }
+        fetch lib/borealis https://github.com/HamletDuFromage/borealis 25651d2ac7ecda88319d322383726a64ea22d3c8
+        fetch TegraExplorer https://github.com/HamletDuFromage/TegraExplorer 26f992d378697a406610004d3079a4b3463ed68f
+
+        test -f lib/borealis/library/include/borealis.hpp || { echo "::error::borealis is missing"; exit 1; }
+        test -d TegraExplorer || { echo "::error::TegraExplorer is missing"; exit 1; }
 
     - name: install dependencies
       run: |
         dkp-pacman -S --needed --noconfirm switch-curl switch-zlib switch-mbedtls
 
-    - name: Building OQB-updater
+    - name: Building CustomUpdater
       run: |
         make -C aiosu-forwarder -f Makefile
         make -j$(nproc)
-        
-    - uses: actions/upload-artifact@master
+        # The app expects the file to be called OQB-updater.nro, whatever the repo is named.
+        NRO="$(ls -1 *.nro | head -n 1)"
+        if [ "$NRO" != "OQB-updater.nro" ]; then mv "$NRO" OQB-updater.nro; fi
+        ls -la *.nro
+
+    - uses: actions/upload-artifact@v4
       with:
-        name: OQB-updater
+        name: CustomUpdater
         path: OQB-updater.nro
 
-    - name: Crear zip para release
+    - name: Create zip for release
       run: zip OQB-updater.zip OQB-updater.nro
 
-    - name: Obtener version del Makefile
+    - name: Read version from Makefile
       id: version
       run: echo "version=$(grep 'APP_VERSION' Makefile | head -1 | awk '{print $NF}')" >> $GITHUB_OUTPUT
 
-    # Solo feat/forwarders, que es la rama de la que se publica. Antes se
-    # publicaba en cada push de cualquier rama, asi que un push de desarrollo le
-    # llegaba a los usuarios como release.
-    #
-    # master queda fuera a proposito: es un espejo de lo ya publicado, asi que
-    # ponerlo al dia volveria a publicar una version que ya salio, re-subiendo
-    # sus archivos sin que nada haya cambiado.
-    #
-    # El .nro de cualquier rama sigue disponible como artifact de la propia
-    # ejecucion, que es lo que hace falta para probar sin publicar.
-    - name: Publicar Release
-      if: github.ref == 'refs/heads/feat/forwarders'
+    # Published as the PRE-release tagged "app", so it never becomes the repo's "latest"
+    # release (those are your CFW packs). Only on main/master.
+    - name: Publish release
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ steps.version.outputs.version }}
-        # Sin esto el tag se crea desde la rama por defecto, no desde el commit
-        # que se acaba de compilar: por eso los tags 1.6.0 a 1.7.9 apuntan todos
-        # al commit de 1.5.0 y no sirven para saber que se publico.
+        tag_name: app
         target_commitish: ${{ github.sha }}
-        name: OQB-updater ${{ steps.version.outputs.version }}
+        name: CustomUpdater (app) ${{ steps.version.outputs.version }}
         files: |
           OQB-updater.zip
           OQB-updater.nro
-        prerelease: false
+        prerelease: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
