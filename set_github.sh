@@ -8,4 +8,4 @@ AUTHOR_="${3:-$USER_}"
 cd "$(dirname "$0")"
 sed -i "s#YOUR_GITHUB_USER#${USER_}#g; s#YOUR_REPO#${REPO_}#g" include/constants.hpp custom_packs.json
 sed -i "s#^APP_AUTHOR\t:=.*#APP_AUTHOR\t:=\t${AUTHOR_}#" Makefile
-echo "Done. Now commit + push; GitHub Actions builds OQB-updater.nro."
+echo "Done. Now commit + push; GitHub Actions builds CustomUpdater.nro."

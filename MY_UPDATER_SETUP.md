@@ -45,11 +45,11 @@ Extras (optional): a `custom_packs.json` in the repo root (`main` branch) is mer
 ## Build (no PC toolchain needed)
 1. Easiest: fork https://github.com/ohquebacan/OQB-updater (keeps the submodules) – or use your own repo and add the submodules from .gitmodules.
 2. Copy these files over your repo (same paths). Your GitHub name/repo (CustomLegends/Download-all) is already filled in.
-3. Commit/push. **Actions -> Build my AIO updater -> Artifacts -> OQB-updater.nro**.
+3. Commit/push. **Actions -> Build my AIO updater -> Artifacts -> CustomUpdater.nro**.
    Pushing to `main`/`master` also publishes the app as the **pre-release tagged `app`** (never becomes your "latest" CFW release).
-4. Copy `OQB-updater.nro` to `sdmc:/switch/`.
+4. Copy `CustomUpdater.nro` to `sdmc:/switch/`.
 
-> The file name stays `OQB-updater.nro` on purpose (paths inside the app depend on it).
+> The file name stays `CustomUpdater.nro` on purpose (paths inside the app depend on it).
 > "Update app" downloads from your `app` pre-release; the automatic new-version notice is switched off (your repo's latest release is a CFW pack).
 
 ## Safety notes
@@ -62,3 +62,10 @@ Only **English (en-US)** and **German (de)** are included; every text is transla
 When you copy the files over your fork, also DELETE these folders from `resources/i18n/`
 (the zip can only add files, not delete): `es fr it ja ko pl pt-BR ro ru zh-CN zh-TW`.
 (The `.patch` file already contains the deletions: `git apply my-aio-updater.patch`.)
+
+## Atmosphère tab, logo, file name
+- **Atmosphère aktualisieren / Update Atmosphère** lists ONLY the packs from your GitHub releases
+  (the old "OQB HATS PACK" / "Overclock HATSPACK" lists are gone). Same full-pack flow as above.
+- The header shows the animated Custom Legends wordmark (`resources/branding/logo_anim.png`, a sprite
+  sheet: 27 build-up frames + the finished logo as the last frame).
+- The built file is now `CustomUpdater.nro` (copy it to `sdmc:/switch/`). Delete the old `OQB-updater.nro` there.

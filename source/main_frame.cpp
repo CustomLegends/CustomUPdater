@@ -4,6 +4,7 @@
 #include <json.hpp>
 
 #include "about_tab.hpp"
+#include "animated_logo.hpp"
 #include "ams_tab.hpp"
 #include "apps_tab.hpp"
 #include "download.hpp"
@@ -24,8 +25,9 @@ namespace {
 
 MainFrame::MainFrame() : TabFrame()
 {
-    this->setIcon("romfs:/gui_icon.png");
-    this->setTitle(AppTitle);
+    // Animated Custom Legends wordmark (also draws the app title next to it).
+    this->setIcon(new AnimatedLogo(AppTitle));
+    this->setTitle("");
 
     s64 freeStorage;
     std::string tag = util::getLatestTag(TAGS_INFO);

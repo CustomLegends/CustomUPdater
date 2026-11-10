@@ -2,8 +2,8 @@
 
 constexpr const char ROOT_PATH[] = "/";
 constexpr const char APP_PATH[] = "/switch/";
-constexpr const char NRO_PATH[] = "/switch/OQB-updater.nro";
-constexpr const char NRO_PATH_REGEX[] = ".*(/switch/OQB-updater\\.nro).*";
+constexpr const char NRO_PATH[] = "/switch/CustomUpdater.nro";
+constexpr const char NRO_PATH_REGEX[] = ".*(/switch/CustomUpdater\\.nro).*";
 constexpr const char DOWNLOAD_PATH[] = "/config/aio-switch-updater/";
 constexpr const char CONFIG_PATH[] = "/config/aio-switch-updater/";
 constexpr const char CONFIG_FILE[] = "/config/aio-switch-updater/config.json";
@@ -20,8 +20,8 @@ constexpr const char CHANGELOG_URL[] = "https://github.com/HamletDuFromage/aio-s
 //  <user>/<repo> = your GitHub account and the repo that holds
 //  this app's releases AND your custom_packs.json.
 // ===========================================================================
-constexpr const char APP_URL[] = "https://github.com/CustomLegends/Download-all/releases/download/app/OQB-updater.zip";
-constexpr const char APP_NRO_URL[] = "https://github.com/CustomLegends/Download-all/releases/download/app/OQB-updater.nro";
+constexpr const char APP_URL[] = "https://github.com/CustomLegends/CustomUPdater/releases/download/app/CustomUpdater.zip";
+constexpr const char APP_NRO_URL[] = "https://github.com/CustomLegends/CustomUPdater/releases/download/app/CustomUpdater.nro";
 // Version check disabled on purpose: this repo's "latest" release is a CFW pack, not the app.
 // The app itself is published as the pre-release tagged "app" (see the CI workflow).
 constexpr const char TAGS_INFO[] = "";

@@ -30,34 +30,98 @@ bool AmsTab::CreateDownloadItems(const nlohmann::ordered_json& cfw_links, bool h
 {
     std::vector<std::pair<std::string, std::string>> links;
     links = download::getLinksFromJson(cfw_links);
-    if (links.size() && !this->hekate.empty()) {  // non-empty this->hekate indicates internet connection
-        auto hekate_link = download::getLinksFromJson(this->hekate);
-        std::string hekate_url = hekate_link[0].second;
-        std::string text_hekate = "menus/common/download"_i18n + hekate_link[0].first;
+    if (links.empty()) return false;
 
-        // The tab's `type` changes while the lists are built (custom tab: full pack
-        // first, then misc), so remember it per item instead of reading it later.
-        const contentType itemType = this->type;
-        for (const auto& link : links) {
-            bool pack = link.first.contains("[PACK]");
-            std::string url = link.second;
-            std::string text("menus/common/download"_i18n + link.first);
-            listItem = new brls::ListItem(link.first);
-            listItem->setHeight(LISTITEM_HEIGHT);
-            listItem->getClickEvent()->subscribe([this, text, text_hekate, url, hekate_url, hekate, pack, ams, itemType](brls::View* view) {
-                if (!erista && !std::filesystem::exists(MARIKO_PAYLOAD_PATH)) {
-                    brls::Application::crash("menus/errors/mariko_payload_missing"_i18n);
-                }
-                else {
-                    CreateStagedFrames(text, url, erista, ams, hekate && !pack, text_hekate, hekate_url, itemType);
-                }
-            });
-            this->RegisterListItemAction(listItem);
-            this->addView(listItem);
+    // Stock hekate download (only offered for entries WITHOUT "[PACK]" in their name).
+    std::string hekate_url, text_hekate;
+    if (hekate && !this->hekate.empty()) {
+        auto hekate_link = download::getLinksFromJson(this->hekate);
+        if (!hekate_link.empty()) {
+            hekate_url = hekate_link[0].second;
+            text_hekate = "menus/common/download"_i18n + hekate_link[0].first;
         }
-        return true;
     }
-    return false;
+    const bool canHekate = !hekate_url.empty();
+
+    // The tab's `type` changes while the lists are built (custom tab: full pack
+    // first, then misc), so remember it per item instead of reading it later.
+    const contentType itemType = this->type;
+    for (const auto& link : links) {
+        bool pack = link.first.contains("[PACK]");
+        std::string url = link.second;
+
+        // "[PACK]" is only a marker for the logic, don't show it.
+        std::string display = link.first;
+        for (size_t pos; (pos = display.find("[PACK]")) != std::string::npos;) display.erase(pos, 6);
+        while (!display.empty() && display.back() == ' ') display.pop_back();
+        while (!display.empty() && display.front() == ' ') display.erase(display.begin());
+
+        std::string text("menus/common/download"_i18n + display);
+        listItem = new brls::ListItem(display);
+        listItem->setHeight(LISTITEM_HEIGHT);
+        listItem->getClickEvent()->subscribe([this, text, text_hekate, url, hekate_url, hekate, canHekate, pack, ams, itemType](brls::View* view) {
+            if (!erista && !std::filesystem::exists(MARIKO_PAYLOAD_PATH)) {
+                brls::Application::crash("menus/errors/mariko_payload_missing"_i18n);
+            }
+            else {
+                CreateStagedFrames(text, url, erista, ams, hekate && canHekate && !pack, text_hekate, hekate_url, itemType);
+            }
+        });
+        this->RegisterListItemAction(listItem);
+        this->addView(listItem);
+    }
+    return true;
+}
+
+// Every .zip asset of YOUR GitHub releases whose release name starts with
+// RELEASE_NAME_FILTER (newest first, as the GitHub API returns them).
+// Fetched once per start: the unauthenticated API allows only 60 requests/hour.
+nlohmann::ordered_json AmsTab::FetchGithubReleasePacks()
+{
+    static nlohmann::ordered_json cache = nlohmann::ordered_json::object();
+    static bool fetched = false;
+    if (fetched && !cache.empty()) return cache;
+    fetched = true;
+
+    nlohmann::ordered_json releases;
+    download::getRequest(RELEASES_API_URL, releases, {"accept: application/vnd.github.v3+json"});
+    if (!releases.is_array()) return cache;
+
+    const auto str = [](const nlohmann::ordered_json& j, const char* key) -> std::string {
+        auto it = j.find(key);
+        return (it != j.end() && it->is_string()) ? it->get<std::string>() : std::string();
+    };
+
+    nlohmann::ordered_json packs = nlohmann::ordered_json::object();
+    for (const auto& release : releases) {
+        if (!release.is_object()) continue;
+        auto draft = release.find("draft");
+        if (draft != release.end() && draft->is_boolean() && draft->get<bool>()) continue;
+
+        std::string name = str(release, "name");
+        if (name.empty()) name = str(release, "tag_name");
+        if (RELEASE_NAME_FILTER[0] != '\0' && name.rfind(RELEASE_NAME_FILTER, 0) != 0) continue;
+
+        auto assets = release.find("assets");
+        if (assets == release.end() || !assets->is_array()) continue;
+
+        std::vector<std::pair<std::string, std::string>> zips;  // asset name, url
+        for (const auto& asset : *assets) {
+            const std::string assetName = str(asset, "name");
+            const std::string url = str(asset, "browser_download_url");
+            if (url.empty() || assetName.size() < 5) continue;
+            std::string ext = assetName.substr(assetName.size() - 4);
+            std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return std::tolower(c); });
+            if (ext == ".zip") zips.emplace_back(assetName, url);
+        }
+        for (const auto& [assetName, url] : zips) {
+            // "[PACK]" = the zip already brings its own hekate, don't offer the stock one afterwards.
+            std::string label = zips.size() > 1 ? name + " - " + assetName : name;
+            packs[label + " [PACK]"] = url;
+        }
+    }
+    cache = packs;
+    return cache;
 }
 
 void AmsTab::CreateStagedFrames(const std::string& text, const std::string& url, bool erista, bool ams, bool hekate, const std::string& text_hekate, const std::string& hekate_url, contentType type)
@@ -106,11 +170,13 @@ bool AmsTab_Regular::CreateDownloadItems(const nlohmann::ordered_json& cfw_links
 
 void AmsTab_Regular::CreateLists()
 {
-    this->type = contentType::ams_cfw;
-    auto cfws = util::getValueFromKey(this->nxlinks, "cfws");
+    // Full-pack flow (download -> verify -> optional SD wipe -> extract) for every
+    // pack of your GitHub releases. The stock lists (OQB HATS PACK, Overclock
+    // HATSPACK, DeepSea ...) are intentionally not shown any more.
+    this->type = contentType::full_pack;
 
     this->addView(new brls::Label(brls::LabelStyle::DESCRIPTION, "menus/main/ams_text"_i18n + (CurrentCfw::running_cfw == CFW::ams ? "\n" + "menus/ams_update/current_ams"_i18n + CurrentCfw::getAmsInfo() : "") + (erista ? "\n" + "menus/ams_update/erista_rev"_i18n : "\n" + "menus/ams_update/mariko_rev"_i18n), true));
-    CreateDownloadItems(util::getValueFromKey(cfws, "Atmosphere"), false);
+    CreateDownloadItems(this->FetchGithubReleasePacks(), false);
 }
 
 std::string AmsTab_Regular::GetRepoName(const std::string& repo)
@@ -235,49 +301,10 @@ AmsTab_Custom::AmsTab_Custom(const nlohmann::ordered_json& nxlinks, const bool e
     this->CreateLists();
 }
 
-// Adds every .zip asset of your GitHub releases (name starts with RELEASE_NAME_FILTER)
-// to the "ams" (full pack) list. Newest release first, as returned by the GitHub API.
+// GitHub releases first, then anything from custom_packs.json.
 void AmsTab_Custom::AddGithubReleases()
 {
-    nlohmann::ordered_json releases;
-    download::getRequest(RELEASES_API_URL, releases, {"accept: application/vnd.github.v3+json"});
-    if (!releases.is_array()) return;
-
-    const auto str = [](const nlohmann::ordered_json& j, const char* key) -> std::string {
-        auto it = j.find(key);
-        return (it != j.end() && it->is_string()) ? it->get<std::string>() : std::string();
-    };
-
-    nlohmann::ordered_json ams = nlohmann::ordered_json::object();
-    for (const auto& release : releases) {
-        if (!release.is_object()) continue;
-        auto draft = release.find("draft");
-        if (draft != release.end() && draft->is_boolean() && draft->get<bool>()) continue;
-
-        std::string name = str(release, "name");
-        if (name.empty()) name = str(release, "tag_name");
-        if (RELEASE_NAME_FILTER[0] != '\0' && name.rfind(RELEASE_NAME_FILTER, 0) != 0) continue;
-
-        auto assets = release.find("assets");
-        if (assets == release.end() || !assets->is_array()) continue;
-
-        std::vector<std::pair<std::string, std::string>> zips;  // asset name, url
-        for (const auto& asset : *assets) {
-            const std::string assetName = str(asset, "name");
-            const std::string url = str(asset, "browser_download_url");
-            if (url.empty() || assetName.size() < 5) continue;
-            std::string ext = assetName.substr(assetName.size() - 4);
-            std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return std::tolower(c); });
-            if (ext == ".zip") zips.emplace_back(assetName, url);
-        }
-        for (const auto& [assetName, url] : zips) {
-            // "[PACK]" = the zip already brings its own hekate, don't offer the stock one afterwards.
-            std::string label = zips.size() > 1 ? name + " - " + assetName : name;
-            ams[label + " [PACK]"] = url;
-        }
-    }
-
-    // GitHub releases first, then anything from custom_packs.json.
+    nlohmann::ordered_json ams = this->FetchGithubReleasePacks();
     auto manual = this->custom_packs.find("ams");
     if (manual != this->custom_packs.end() && manual->is_object()) {
         for (const auto& item : manual->items()) {

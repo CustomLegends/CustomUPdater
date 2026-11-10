@@ -23,7 +23,7 @@ INCLUDES	:=	include /lib/borealis/library/include/borealis/extern/nlohmann
 APP_TITLE	:=	CustomUpdater
 APP_AUTHOR	:=	Custom Legends
 APP_VERSION :=	1.9.2
-TARGET		:=	OQB-updater
+TARGET		:=	CustomUpdater
 
 ROMFS				:=	resources
 BOREALIS_PATH		:=	lib/borealis

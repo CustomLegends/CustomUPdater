@@ -14,17 +14,17 @@ if [ -d "${REPO_DIR}/build" ] && [ "${REPO_DIR}/Makefile" -nt "${REPO_DIR}/build
     rm -rf "${REPO_DIR}/build"
 fi
 
-# El directorio de trabajo debe llamarse OQB-updater: el Makefile deriva
+# El directorio de trabajo debe llamarse CustomUpdater: el Makefile deriva
 # TARGET del nombre de la carpeta, igual que hace el checkout de CI.
 docker run --rm \
-    -v "${REPO_DIR}:/OQB-updater" \
-    -w /OQB-updater \
+    -v "${REPO_DIR}:/CustomUpdater" \
+    -w /CustomUpdater \
     devkitpro/devkita64 \
     bash -lc '
         set -euo pipefail
-        git config --global --add safe.directory /OQB-updater
-        git config --global --add safe.directory /OQB-updater/lib/borealis
-        git config --global --add safe.directory /OQB-updater/TegraExplorer
+        git config --global --add safe.directory /CustomUpdater
+        git config --global --add safe.directory /CustomUpdater/lib/borealis
+        git config --global --add safe.directory /CustomUpdater/TegraExplorer
         dkp-pacman -S --needed --noconfirm switch-curl switch-zlib switch-mbedtls >/dev/null
         make -C aiosu-forwarder -f Makefile
         make -j"$(nproc)" '"${1:-}"'

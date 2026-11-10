@@ -4,9 +4,9 @@
 #include <switch.h>
 
 // NRO final en /switch/
-#define FULL_PATH      "/switch/OQB-updater.nro"
+#define FULL_PATH      "/switch/CustomUpdater.nro"
 // NRO recién extraído en /config/ (viene del zip de actualización)
-#define CONFIG_NRO     "/config/aio-switch-updater/OQB-updater.nro"
+#define CONFIG_NRO     "/config/aio-switch-updater/CustomUpdater.nro"
 // El forwarder se borra a sí mismo tras lanzar el app
 #define FORWARDER_PATH "/config/aio-switch-updater/aiosu-forwarder.nro"
 

@@ -17,6 +17,8 @@ protected:
     void CreateStagedFrames(const std::string& text, const std::string& url, bool erista, bool ams = true, bool hekate = false, const std::string& text_hekate = "", const std::string& hekate_url = "", contentType type = contentType::ams_cfw);
     bool CreateDownloadItems(const nlohmann::ordered_json& cfw_links, bool hekate = true, bool ams = true);
     void CreateNotFoundLabel();
+    // Full packs from YOUR GitHub releases: { "Release name [PACK]": "https://.../pack.zip" }
+    nlohmann::ordered_json FetchGithubReleasePacks();
     virtual void RegisterListItemAction(brls::ListItem* listItem);
 
 public:
