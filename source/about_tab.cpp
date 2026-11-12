@@ -134,7 +134,7 @@ void AboutTab::addAppInfo()
 
     brls::Label* subTitle = new brls::Label(
         brls::LabelStyle::REGULAR,
-        "menus/about/title"_i18n + "\nOH! QUÉ BACÁN",
+        "menus/about/title"_i18n + "\nCustomLegends",
         true);
     subTitle->setHorizontalAlign(NVG_ALIGN_CENTER);
     this->addView(subTitle);
