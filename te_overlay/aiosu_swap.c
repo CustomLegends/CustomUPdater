@@ -364,7 +364,9 @@ static void refresh_hekate(void)
             if (src) {
                 FILINFO fi;
                 if (f_stat("sd:/bootloader", &fi) == FR_OK) copy_file(src, "sd:/bootloader/update.bin");
-                if (f_stat("sd:/payload.bin.aio", &fi) == FR_OK) copy_file(src, "sd:/payload.bin.aio");
+                /* always (re)create it: without payload.bin.aio the Mariko path would
+                 * keep booting this payload forever */
+                copy_file(src, "sd:/payload.bin.aio");
                 free(src);
             }
             break;
