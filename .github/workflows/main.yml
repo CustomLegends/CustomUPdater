@@ -49,10 +49,16 @@ jobs:
       run: |
         dkp-pacman -S --needed --noconfirm switch-curl switch-zlib switch-mbedtls
 
+    # Every build gets its own version (2.0.<run number>). It is compiled into the app and used
+    # as the release tag, so the app can tell "there is a newer release" without you editing anything.
+    - name: Version
+      id: version
+      run: echo "version=2.0.${{ github.run_number }}" >> $GITHUB_OUTPUT
+
     - name: Building CustomUpdater
       run: |
         make -C aiosu-forwarder -f Makefile
-        make -j$(nproc)
+        make -j$(nproc) APP_VERSION=${{ steps.version.outputs.version }}
         # The app expects the file to be called CustomUpdater.nro, whatever the repo is named.
         NRO="$(ls -1 *.nro | head -n 1)"
         if [ "$NRO" != "CustomUpdater.nro" ]; then mv "$NRO" CustomUpdater.nro; fi
@@ -66,22 +72,18 @@ jobs:
     - name: Create zip for release
       run: zip CustomUpdater.zip CustomUpdater.nro
 
-    - name: Read version from Makefile
-      id: version
-      run: echo "version=$(grep 'APP_VERSION' Makefile | head -1 | awk '{print $NF}')" >> $GITHUB_OUTPUT
-
-    # Published as the PRE-release tagged "app", so it never becomes the repo's "latest"
-    # release (those are your CFW packs). Only on main/master.
+    # Only on main/master: publish a normal release. The app's "update" button downloads
+    # releases/latest/download/CustomUpdater.zip from here.
     - name: Publish release
       if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: app
+        tag_name: ${{ steps.version.outputs.version }}
         target_commitish: ${{ github.sha }}
-        name: CustomUpdater (app) ${{ steps.version.outputs.version }}
+        name: CustomUpdater ${{ steps.version.outputs.version }}
+        make_latest: true
         files: |
           CustomUpdater.zip
           CustomUpdater.nro
-        prerelease: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
