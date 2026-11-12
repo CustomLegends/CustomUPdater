@@ -10,7 +10,6 @@
 
 namespace i18n = brls::i18n;
 using namespace i18n::literals;
-
 ConfirmPage::ConfirmPage(brls::StagedAppletFrame* frame, const std::string& text)
 {
     this->button = (new brls::Button(brls::ButtonStyle::REGULAR))->setLabel("menus/common/back"_i18n);
@@ -54,38 +53,19 @@ ConfirmPage_SelfUpdate::ConfirmPage_SelfUpdate(brls::StagedAppletFrame* frame, c
 
 ConfirmPage_AmsUpdate::ConfirmPage_AmsUpdate(brls::StagedAppletFrame* frame, const std::string& text, bool erista) : ConfirmPage_Done(frame, text)
 {
+    this->button->setLabel("menus/common/reboot"_i18n);
     this->button->getClickEvent()->subscribe([this, erista](View* view) {
-        const std::string pkg3Aio = "/atmosphere/package3.aio";
-        const std::string pkg3 = "/atmosphere/package3";
-        const std::string stratoAio = "/atmosphere/stratosphere.romfs.aio";
-        const std::string strato = "/atmosphere/stratosphere.romfs";
-
-        if (std::filesystem::exists(pkg3Aio)) {
-            std::error_code ec;
-            std::filesystem::remove(pkg3, ec);
-            std::filesystem::rename(pkg3Aio, pkg3, ec);
-        }
-        if (std::filesystem::exists(stratoAio)) {
-            std::error_code ec;
-            std::filesystem::remove(strato, ec);
-            std::filesystem::rename(stratoAio, strato, ec);
-        }
-
         if (erista) {
-            if (std::filesystem::exists(REBOOT_PAYLOAD_PATH)) {
-                util::rebootToPayload(REBOOT_PAYLOAD_PATH);
-            }
-            else if (std::filesystem::exists(UPDATE_BIN_PATH)) {
-                util::rebootToPayload(UPDATE_BIN_PATH);
-            }
-            else {
-                util::shutDown(true);
-            }
+            util::rebootToPayload(RCM_PAYLOAD_PATH);
         }
         else {
             if (std::filesystem::exists(UPDATE_BIN_PATH)) {
-                fs::copyFile(UPDATE_BIN_PATH, MARIKO_PAYLOAD_PATH);
+                fs::copyFile(UPDATE_BIN_PATH, MARIKO_PAYLOAD_PATH_TEMP);
             }
+            else {
+                fs::copyFile(REBOOT_PAYLOAD_PATH, MARIKO_PAYLOAD_PATH_TEMP);
+            }
+            fs::copyFile(RCM_PAYLOAD_PATH, MARIKO_PAYLOAD_PATH);
             util::shutDown(true);
         }
     });
@@ -139,6 +119,7 @@ void ConfirmPage::layout(NVGcontext* vg, brls::Style* style, brls::FontStash* st
 {
     this->label->setWidth(this->width);
     this->label->invalidate(true);
+    // this->label->setBackground(brls::ViewBackground::DEBUG);
     this->label->setBoundaries(
         this->x + this->width / 2 - this->label->getWidth() / 2,
         this->y + (this->height - this->label->getHeight() - this->y - style->CrashFrame.buttonHeight) / 2,
