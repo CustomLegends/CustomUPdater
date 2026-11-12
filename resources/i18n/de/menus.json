@@ -329,9 +329,9 @@
         "apply_failed": "Die Farbe konnte nicht angewendet werden. Stelle sicher, dass {} verbunden sind, und versuche es erneut.\nFehler: {}"
     },
     "full_pack": {
-        "verified": "Pack geprüft: {} Dateien ({}).\n\nOK = Alte CFW-Daten löschen & Pack installieren\n(Nintendo, emuMMC, Backup & preserve.txt bleiben).\n\nKonsole am Netzteil lassen!.",
+        "verified": "Pack geprüft: {} Dateien ({}).\n\nOK Konsole am Netzteil lassen!.",
         "cancel": "Abbrechen",
-        "no_wipe": "Ohne Löschen installieren",
-        "wipe": "SD löschen & installieren"
+        "no_wipe": "Überschreiben",
+        "wipe": "Neu Installieren"
     }
 }
