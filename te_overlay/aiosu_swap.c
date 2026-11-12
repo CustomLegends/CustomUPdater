@@ -380,7 +380,17 @@ static void refresh_hekate(void)
 void aiosu_run_pending_swap(void)
 {
     FILINFO fi;
-    if (f_stat(SWAP_MARKER, NULL) != FR_OK) return;
+    if (f_stat(SWAP_MARKER, NULL) != FR_OK) {
+        if (f_stat("sd:/" SWAP_STAGING, NULL) == FR_OK) {
+            gfx_printf("\n%kCustomUpdater: %s exists but swap_pending.txt is missing.\nNothing was changed.%k\n", 0xFFFF0000, SWAP_STAGING, 0xFFCCCCCC);
+            usleep(6000000);
+        }
+        else {
+            gfx_printf("\nCustomUpdater: no pending install.\n");
+            usleep(1500000);
+        }
+        return;
+    }
 
     gfx_printf("\n%kCustomUpdater: installing pack%k\n", 0xFF00FFCC, 0xFFCCCCCC);
 
