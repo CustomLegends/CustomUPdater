@@ -69,3 +69,12 @@ When you copy the files over your fork, also DELETE these folders from `resource
 - The header shows the animated Custom Legends wordmark (`resources/branding/logo_anim.png`, a sprite
   sheet: 27 build-up frames + the finished logo as the last frame).
 - The built file is now `CustomUpdater.nro` (copy it to `sdmc:/switch/`). Delete the old `OQB-updater.nro` there.
+
+## Updating the app from inside the app
+- Every push to `master` builds `CustomUpdater.nro` as version `2.0.<run number>` and publishes it as a
+  normal release of `CustomLegends/CustomUPdater` (tag = version).
+- The app checks `releases/latest` of that repo at start: if the tag differs from its own version it shows a
+  notice ("Update now / Later"). The same update is available under **Über / About -> update app**.
+- Updating downloads `CustomUpdater.zip`, replaces `sdmc:/switch/CustomUpdater.nro` and restarts the app.
+- The very first build must be copied to the SD card by hand; after that updates work from inside the app.
+- You can delete the old pre-release called "app" in your Releases list.

@@ -20,11 +20,11 @@ constexpr const char CHANGELOG_URL[] = "https://github.com/HamletDuFromage/aio-s
 //  <user>/<repo> = your GitHub account and the repo that holds
 //  this app's releases AND your custom_packs.json.
 // ===========================================================================
-constexpr const char APP_URL[] = "https://github.com/CustomLegends/CustomUPdater/releases/download/app/CustomUpdater.zip";
-constexpr const char APP_NRO_URL[] = "https://github.com/CustomLegends/CustomUPdater/releases/download/app/CustomUpdater.nro";
-// Version check disabled on purpose: this repo's "latest" release is a CFW pack, not the app.
-// The app itself is published as the pre-release tagged "app" (see the CI workflow).
-constexpr const char TAGS_INFO[] = "";
+constexpr const char APP_URL[] = "https://github.com/CustomLegends/CustomUPdater/releases/latest/download/CustomUpdater.zip";
+constexpr const char APP_NRO_URL[] = "https://github.com/CustomLegends/CustomUPdater/releases/latest/download/CustomUpdater.nro";
+// In-app update: the newest release of the repo that BUILDS the app (CustomLegends/CustomUPdater).
+// Its tag (e.g. "2.0.12") is compared with the version compiled into the running app.
+constexpr const char TAGS_INFO[] = "https://api.github.com/repos/CustomLegends/CustomUPdater/releases/latest";
 
 // Every release of this repo whose NAME starts with RELEASE_NAME_FILTER is listed in the app
 // automatically (each .zip asset = one full pack). "" = list all releases.
