@@ -1,7 +1,10 @@
 #include "wipe.hpp"
 
+#include <switch.h>
+
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
 #include <filesystem>
 #include <vector>
 
@@ -35,7 +38,6 @@ namespace wipe {
     std::string cleanKeepEntry(const std::string& line)
     {
         std::string s = line;
-        // trim whitespace / CR
         while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back()))) s.pop_back();
         size_t start = 0;
         while (start < s.size() && std::isspace(static_cast<unsigned char>(s[start]))) start++;
@@ -44,13 +46,31 @@ namespace wipe {
         s = normalize(s);
         if (s.empty()) return "";
         if (s[0] != '/') s.insert(s.begin(), '/');
-        // Never let a protect entry be "/" (that would protect everything) –
-        // ignore it so the wipe still does what the user asked for.
         if (s == "/") return "";
         return s;
     }
 
     namespace {
+        void stopRunningSysmodules()
+        {
+            if (R_FAILED(pmshellInitialize())) return;
+            std::error_code ec;
+            const std::string contentsDir = "/atmosphere/contents";
+            if (std::filesystem::exists(contentsDir, ec)) {
+                for (const auto& entry : std::filesystem::directory_iterator(contentsDir, ec)) {
+                    if (ec) break;
+                    std::string name = entry.path().filename().string();
+                    if (name.size() == 16) {
+                        u64 tid = std::strtoull(name.c_str(), nullptr, 16);
+                        if (tid > 0x0100000000001FFFULL || (tid >= 0x4200000000000000ULL)) {
+                            pmshellTerminateProgram(tid);
+                        }
+                    }
+                }
+            }
+            pmshellExit();
+        }
+
         bool removeEntry(const std::string& path, bool isDir, const std::function<bool(const std::string&)>& removeDirFn)
         {
             std::error_code ec;
@@ -67,7 +87,7 @@ namespace wipe {
                      const std::function<void(size_t, size_t)>& progress)
         {
             std::error_code ec;
-            std::vector<std::pair<std::string, bool>> entries;  // path, isDir
+            std::vector<std::pair<std::string, bool>> entries;
             for (std::filesystem::directory_iterator it(dir, ec), end; !ec && it != end; it.increment(ec)) {
                 std::error_code dec;
                 const bool isDir = it->is_directory(dec) && !it->is_symlink(dec);
@@ -82,8 +102,8 @@ namespace wipe {
 
                 const std::string e = normalize(path);
 
-                bool protectedEntry = false;  // e is a kept path or inside one
-                bool ancestorOfKept = false;  // a kept path lives below e
+                bool protectedEntry = false;
+                bool ancestorOfKept = false;
                 for (const auto& k : keepNorm) {
                     if (isPathPrefix(k, e)) {
                         protectedEntry = true;
@@ -97,7 +117,6 @@ namespace wipe {
                     continue;
                 }
                 if (ancestorOfKept && isDir) {
-                    // Enter it and clean around the protected path(s).
                     wipeDir(path, keepNorm, removeDirFn, nullptr, nullptr);
                     if (stats) stats->kept++;
                     continue;
@@ -116,12 +135,13 @@ namespace wipe {
     Stats wipeExcept(const std::string& root, const std::set<std::string>& keep, const std::function<bool(const std::string&)>& removeDirFn,
                      const std::function<void(size_t, size_t)>& progress)
     {
+        stopRunningSysmodules();
+
         Stats stats;
         std::set<std::string> keepNorm;
         for (const auto& k : keep) {
             const std::string clean = cleanKeepEntry(k);
             if (clean.empty()) continue;
-            // Re-root the entry below `root` ("/" on the Switch).
             if (root == "/" || root.empty()) {
                 keepNorm.insert(clean);
             }
