@@ -212,6 +212,73 @@ namespace util {
             ProgressEvent::instance().setStep(ProgressEvent::instance().getMax());
         }
 
+        // Full-pack "wipe" mode: the SD card is NOT touched while Horizon runs.
+        // The pack is unpacked into STAGING_DIR, a keep list + marker are written and
+        // the TegraExplorer payload (booted by the final "reboot" page) does the
+        // wipe and moves the staged files into place (see te_overlay/aiosu_swap.c).
+        constexpr const char STAGING_DIR[] = "/aiosu_staging";
+        constexpr const char SWAP_MARKER_PATH[] = "/config/aio-switch-updater/swap_pending.txt";
+        constexpr const char SWAP_KEEP_PATH[] = "/config/aio-switch-updater/swap_keep.txt";
+        bool g_stagedSwap = false;
+
+        bool stageFullPack()
+        {
+            std::error_code ec;
+            std::filesystem::remove(SWAP_MARKER_PATH, ec);
+            fs::removeDir(STAGING_DIR);
+            fs::createTree(std::string(STAGING_DIR) + "/");
+
+            ProgressEvent::instance().setStep(0);
+            extract::extract(FULLPACK_FILENAME, std::string(STAGING_DIR) + "/", false);
+
+            if (ProgressEvent::instance().getInterupt()) {
+                fs::removeDir(STAGING_DIR);
+                cancelStage();
+                return false;
+            }
+            if (ProgressEvent::instance().getStatusCode() > 399) {
+                fs::removeDir(STAGING_DIR);
+                return false;
+            }
+            if (!std::filesystem::exists(std::string(STAGING_DIR) + "/atmosphere", ec) && !std::filesystem::exists(std::string(STAGING_DIR) + "/bootloader", ec)) {
+                brls::Logger::error("Staged pack has neither /atmosphere nor /bootloader");
+                fs::removeDir(STAGING_DIR);
+                failStage(406);
+                return false;
+            }
+
+            std::set<std::string> keep;
+            for (const char* k : WIPE_ALWAYS_KEEP) keep.insert(k);
+            for (const auto& folder : AMS_CONTENTS_KEEP) keep.insert(std::string(AMS_CONTENTS) + folder);
+            keep.insert(getAppPath());
+            keep.insert("/atmosphere/logs");
+            keep.insert("/atmosphere/fatal_reports");
+            for (const auto& line : fs::readLineByLine(FILES_IGNORE)) {
+                const std::string clean = wipe::cleanKeepEntry(line);
+                if (!clean.empty()) keep.insert(clean);
+            }
+            {
+                std::ofstream out(SWAP_KEEP_PATH, std::ios::trunc);
+                for (const auto& k : keep) out << k << "\n";
+                if (!out.good()) {
+                    fs::removeDir(STAGING_DIR);
+                    failStage(507);
+                    return false;
+                }
+            }
+            {
+                std::ofstream out(SWAP_MARKER_PATH, std::ios::trunc);
+                out << "1\n";
+                if (!out.good()) {
+                    fs::removeDir(STAGING_DIR);
+                    failStage(507);
+                    return false;
+                }
+            }
+            g_stagedSwap = true;
+            return true;
+        }
+
         void installFullPack()
         {
             if (ProgressEvent::instance().getStatusCode() > 399) return;
@@ -245,31 +312,11 @@ namespace util {
             }
 
             ProgressEvent::instance().setInterupt(false);
+            g_stagedSwap = false;
 
             if (choice == 2) {
-                std::set<std::string> keep;
-                for (const char* k : WIPE_ALWAYS_KEEP) keep.insert(k);
-                for (const auto& folder : AMS_CONTENTS_KEEP) keep.insert(std::string(AMS_CONTENTS) + folder);
-                keep.insert(getAppPath());
-                keep.insert("/atmosphere/package3");
-                keep.insert("/atmosphere/stratosphere.romfs");
-                keep.insert("/atmosphere/logs");
-                keep.insert("/atmosphere/fatal_reports");
-                keep.insert("/config/aio-switch-updater");
-                for (const auto& line : fs::readLineByLine(FILES_IGNORE)) {
-                    const std::string clean = wipe::cleanKeepEntry(line);
-                    if (!clean.empty()) keep.insert(clean);
-                }
-
-                ProgressEvent::instance().setStep(0);
-                const auto stats = wipe::wipeExcept(
-                    ROOT_PATH, keep,
-                    [](const std::string& dir) { return fs::removeDir(dir); },
-                    [](size_t done, size_t count) {
-                        ProgressEvent::instance().setTotalSteps(static_cast<int>(count) + 1);
-                        ProgressEvent::instance().setStep(static_cast<int>(done));
-                    });
-                brls::Logger::info("SD wipe: removed {}, kept {}, failed {}", stats.removed, stats.kept, stats.failed);
+                stageFullPack();
+                return;
             }
 
             ProgressEvent::instance().setStep(0);
@@ -335,7 +382,7 @@ namespace util {
             default:
                 break;
         }
-        if (type == contentType::ams_cfw || type == contentType::bootloaders || type == contentType::custom || type == contentType::full_pack)
+        if (type == contentType::ams_cfw || type == contentType::bootloaders || type == contentType::custom || (type == contentType::full_pack && !g_stagedSwap))
             fs::copyFiles(COPY_FILES_TXT);
     }
 
