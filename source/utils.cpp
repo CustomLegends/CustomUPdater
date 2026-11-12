@@ -3,6 +3,7 @@
 #include <switch.h>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -30,10 +31,10 @@ namespace util {
     {
         if (std::filesystem::exists(path)) {
             std::ifstream is(path, std::ifstream::binary);
-            char zip_signature[4] = {0x50, 0x4B, 0x03, 0x04};  // zip signature header PK\3\4
-            char signature[4];
-            is.read(signature, 4);
-            if (is.good() && std::equal(std::begin(signature), std::end(signature), std::begin(zip_signature), std::end(zip_signature))) {
+            const std::array<char, 4> zip_signature = {0x50, 0x4B, 0x03, 0x04};
+            std::array<char, 4> signature = {};
+            is.read(signature.data(), 4);
+            if (is.good() && signature == zip_signature) {
                 return true;
             }
         }
@@ -211,12 +212,10 @@ namespace util {
             ProgressEvent::instance().setStep(ProgressEvent::instance().getMax());
         }
 
-        // download (done by the previous stage) -> verify -> confirm -> wipe -> extract
         void installFullPack()
         {
-            if (ProgressEvent::instance().getStatusCode() > 399) return;  // download/zip check already failed
+            if (ProgressEvent::instance().getStatusCode() > 399) return;
 
-            // 1) Verify the whole zip BEFORE touching anything on the SD card.
             verify::ArchiveInfo info;
             std::string error;
             if (!verify::verifyArchive(FULLPACK_FILENAME, info, error)) {
@@ -225,7 +224,7 @@ namespace util {
                     cancelStage();
                 }
                 else {
-                    failStage(406);  // "nothing was deleted" – see getErrorMessage
+                    failStage(406);
                 }
                 return;
             }
@@ -236,7 +235,6 @@ namespace util {
                 return;
             }
 
-            // 2) Ask. Cancel is the first (default-focused) button on purpose.
             const std::string text = fmt::format(
                 "menus/full_pack/verified"_i18n,
                 info.files, static_cast<double>(info.uncompressedSize) / 1048576.0);
@@ -246,7 +244,6 @@ namespace util {
                 return;
             }
 
-            // 3) Point of no return: from here on B must not abort half way.
             ProgressEvent::instance().setInterupt(false);
 
             if (choice == 2) {
@@ -268,3 +265,11 @@ namespace util {
                 const auto stats = wipe::wipeExcept(
                     ROOT_PATH, keep,
                     [](const std::string& dir) { return fs::removeDir(dir); },
+                    [](size_t done, size_t count) {
+                        ProgressEvent::instance().setTotalSteps(static_cast<int>(count) + 1);
+                        ProgressEvent::instance().setStep(static_cast<int>(done));
+                    });
+                brls::Logger::info("SD wipe: removed {}, kept {}, failed {}", stats.removed, stats.kept, stats.failed);
+            }
+
+            ProgressEvent::instance().setStep(0);
