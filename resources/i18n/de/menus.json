@@ -3,7 +3,7 @@
         "title": "All-in-One Nintendo Switch Updater",
         "copyright": "AIO-Switch-Updater ist lizensiert unter: GPL-3.0\n© 2020 HamletDuFromage",
         "disclaimers": "◆ Außer Cheat-Codes, die vom Haupt-GBAtemp.net-Thread stammen, hostet HamletDuFromage nichts selber. Alle Anerkennung geht an die jeweiligen Besitzer.\n◆ Links werden alle 30 Minuten aktualisiert. Wenn ein Link nach 30 Minuten weiterhin nicht funktioniert, eröffne bitte ein GitHub-Issue.\n",
-        "donate": "◆ Gefällt dir die App? Hier kannst du meine Bemühungen unterstützen: 'https://git.io/donate_homlet'",
+        "donate": "◆ Gefällt dir die App? Hier kannst du meine Bemühungen unterstützen: 'https://www.tipeeestream.com/customlegends/donation'",
         "disclaimers_title": "Hinweise",
         "status_title": "Konsolenstatus",
         "status_version": "CustomUpdater",
@@ -236,10 +236,10 @@
         "full_pack_too_big": "507: Das Pack ist größer als die SD-Karte.\nAuf deiner SD-Karte wurde NICHTS gelöscht."
     },
     "apps": {
-        "forwarder_ask": "Do you want to create a shortcut on the HOME menu for this app?",
-        "forwarder_creating": "Creating shortcut...",
-        "forwarder_error": "The shortcut could not be created: {}",
-        "installed": "Installed",
+        "forwarder_ask": "Forwarder erstellen ?",
+        "forwarder_creating": "Forwarder wird erstellt...",
+        "forwarder_error": "Error : {}",
+        "installed": "Installiert",
         "sec_emuladores": "Emulatoren und Ports",
         "sec_mods": "Mods, Themes und Icons",
         "sec_sysmodules": "Sysmodule und Leistung",
