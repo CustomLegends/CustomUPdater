@@ -273,3 +273,5 @@ namespace util {
             }
 
             ProgressEvent::instance().setStep(0);
+            extract::extract(FULLPACK_FILENAME, ROOT_PATH, false);
+        }
