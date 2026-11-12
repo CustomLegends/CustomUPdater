@@ -329,7 +329,7 @@
         "apply_failed": "Die Farbe konnte nicht angewendet werden. Stelle sicher, dass {} verbunden sind, und versuche es erneut.\nFehler: {}"
     },
     "full_pack": {
-        "verified": "Pack erfolgreich geprüft: {} Dateien, {:.1f} MB.\n\nLÖSCHEN = ALLES auf der SD-Karte löschen, außer /Nintendo, /emuMMC, /backup, /payload.bin, dieser App samt Konfiguration und allem, was in preserve.txt steht. Danach wird das Pack installiert.\n\nKonsole geladen bzw. am Netzteil lassen, bis „Fertig“ erscheint.",
+        "verified": "Pack geprüft: {} Dateien ({}).\n\nOK = Alte CFW-Daten löschen & Pack installieren\n(Nintendo, emuMMC, Backup & preserve.txt bleiben).\n\nKonsole am Netzteil lassen!.",
         "cancel": "Abbrechen",
         "no_wipe": "Ohne Löschen installieren",
         "wipe": "SD löschen & installieren"
