@@ -268,4 +268,3 @@ namespace util {
                 const auto stats = wipe::wipeExcept(
                     ROOT_PATH, keep,
                     [](const std::string& dir) { return fs::removeDir(dir); },
-                    [](size_t done, size_t count) {
