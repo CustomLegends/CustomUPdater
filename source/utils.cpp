@@ -3,6 +3,9 @@
 #include <switch.h>
 
 #include <algorithm>
+#include <cerrno>
+#include <cstdio>
+#include <iterator>
 #include <array>
 #include <chrono>
 #include <filesystem>
@@ -221,6 +224,44 @@ namespace util {
         constexpr const char SWAP_KEEP_PATH[] = "/config/aio-switch-updater/swap_keep.txt";
         bool g_stagedSwap = false;
 
+        // Writes a small file, forces it to the SD card and reads it back.
+        bool writeVerified(const char* path, const std::string& content, std::string& err)
+        {
+            FILE* f = std::fopen(path, "wb");
+            if (!f) {
+                err = fmt::format("cannot create {} (errno {})", path, errno);
+                return false;
+            }
+            const size_t written = std::fwrite(content.data(), 1, content.size(), f);
+            const int flushed = std::fflush(f);
+            fsync(fileno(f));
+            const int closed = std::fclose(f);
+            if (written != content.size() || flushed != 0 || closed != 0) {
+                err = fmt::format("write failed for {} (errno {})", path, errno);
+                return false;
+            }
+            std::ifstream in(path, std::ios::binary);
+            const std::string back((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+            if (back != content) {
+                err = fmt::format("read-back mismatch for {}", path);
+                return false;
+            }
+            return true;
+        }
+
+        // Every failure is shown to the user (and the stage is cancelled) instead of
+        // silently leaving a half-prepared SD card behind.
+        bool stageFailed(const std::string& why)
+        {
+            brls::Logger::error("Full pack staging failed: {}", why);
+            fs::removeDir(STAGING_DIR);
+            std::error_code ec;
+            std::filesystem::remove(SWAP_MARKER_PATH, ec);
+            showDialogBoxBlocking("Vorbereitung fehlgeschlagen / Preparation failed:\n" + why, "OK");
+            cancelStage();
+            return false;
+        }
+
         bool stageFullPack()
         {
             std::error_code ec;
@@ -230,6 +271,9 @@ namespace util {
 
             ProgressEvent::instance().setStep(0);
             extract::extract(FULLPACK_FILENAME, std::string(STAGING_DIR) + "/", false);
+            // extract() ends with step == max, which the UI treats as "stage finished".
+            // Keep this page alive until the keep list and the marker are really on the SD.
+            ProgressEvent::instance().setTotalSteps(ProgressEvent::instance().getMax() + 1);
 
             if (ProgressEvent::instance().getInterupt()) {
                 fs::removeDir(STAGING_DIR);
@@ -237,14 +281,10 @@ namespace util {
                 return false;
             }
             if (ProgressEvent::instance().getStatusCode() > 399) {
-                fs::removeDir(STAGING_DIR);
-                return false;
+                return stageFailed(fmt::format("status {}", static_cast<long>(ProgressEvent::instance().getStatusCode())));
             }
             if (!std::filesystem::exists(std::string(STAGING_DIR) + "/atmosphere", ec) && !std::filesystem::exists(std::string(STAGING_DIR) + "/bootloader", ec)) {
-                brls::Logger::error("Staged pack has neither /atmosphere nor /bootloader");
-                fs::removeDir(STAGING_DIR);
-                failStage(406);
-                return false;
+                return stageFailed("Das Pack enthaelt weder /atmosphere noch /bootloader. / The pack has neither /atmosphere nor /bootloader.");
             }
 
             std::set<std::string> keep;
@@ -257,25 +297,20 @@ namespace util {
                 const std::string clean = wipe::cleanKeepEntry(line);
                 if (!clean.empty()) keep.insert(clean);
             }
-            {
-                std::ofstream out(SWAP_KEEP_PATH, std::ios::trunc);
-                for (const auto& k : keep) out << k << "\n";
-                if (!out.good()) {
-                    fs::removeDir(STAGING_DIR);
-                    failStage(507);
-                    return false;
-                }
-            }
-            {
-                std::ofstream out(SWAP_MARKER_PATH, std::ios::trunc);
-                out << "1\n";
-                if (!out.good()) {
-                    fs::removeDir(STAGING_DIR);
-                    failStage(507);
-                    return false;
-                }
-            }
+
+            std::string keepText;
+            for (const auto& k : keep) keepText += k + "\n";
+
+            std::string err;
+            if (!writeVerified(SWAP_KEEP_PATH, keepText, err)) return stageFailed(err);
+            if (!writeVerified(SWAP_MARKER_PATH, "1\n", err)) return stageFailed(err);
+            fsdevCommitDevice("sdmc");
+
             g_stagedSwap = true;
+            showDialogBoxBlocking(
+                "Bereit: Beim Neustart wird die SD-Karte neu aufgebaut. / Ready: the SD card will be rebuilt on reboot.",
+                "OK");
+            ProgressEvent::instance().setStep(ProgressEvent::instance().getMax());
             return true;
         }
 
