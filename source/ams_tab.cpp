@@ -1,3 +1,4 @@
+#include "user_links.hpp"
 #include "ams_tab.hpp"
 
 #include <algorithm>
@@ -85,7 +86,7 @@ nlohmann::ordered_json AmsTab::FetchGithubReleasePacks()
 
     nlohmann::ordered_json releases;
     download::getRequest(RELEASES_API_URL, releases, {"accept: application/vnd.github.v3+json"});
-    if (!releases.is_array()) return cache;
+    if (!releases.is_array()) releases = nlohmann::ordered_json::array();
 
     const auto str = [](const nlohmann::ordered_json& j, const char* key) -> std::string {
         auto it = j.find(key);
@@ -119,6 +120,11 @@ nlohmann::ordered_json AmsTab::FetchGithubReleasePacks()
             std::string label = zips.size() > 1 ? name + " - " + assetName : name;
             packs[label + " [PACK]"] = url;
         }
+    }
+    // CFW packs the user added in the "Eigene Links" tab show up in the same list.
+    const nlohmann::ordered_json userPacks = userlinks::cfwPacks();
+    for (auto it = userPacks.begin(); it != userPacks.end(); ++it) {
+        if (!packs.contains(it.key())) packs[it.key()] = it.value();
     }
     cache = packs;
     return cache;

@@ -12,6 +12,7 @@
 #include "language_tab.hpp"
 #include "list_download_tab.hpp"
 #include "tools_tab.hpp"
+#include "user_links_tab.hpp"
 #include "utils.hpp"
 
 namespace i18n = brls::i18n;
@@ -72,6 +73,10 @@ MainFrame::MainFrame() : TabFrame()
 
     if (!util::getBoolValue(hideStatus, "apps"))
         this->addTab("menus/main/apps"_i18n, new AppsTab(nxlinks));
+
+    // Own links (GitHub repos / direct downloads). Hide it with "user_links": true in hide_tabs.json.
+    if (!util::getBoolValue(hideStatus, "user_links"))
+        this->addTab("user_links/tab_title"_i18n, new UserLinksTab());
 
     /* Mira los dos grupos anteriores, no solo el de descargas: ocultandolas
        todas, estado y ajustes quedarian pegados sin separador. Cada separador
